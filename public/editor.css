@@ -25,7 +25,7 @@ textarea.code
 }
 
 #mainApp {
-  max-width: 800px; /* Keep max-width */
+  max-width: 900px; /* Keep max-width */
   margin: 0 auto; /* Center the app */
   padding: 20px;
   border: 1px solid #ddd;
@@ -38,6 +38,9 @@ textarea.code
   margin: 0 auto 20px auto; /* Add bottom margin */
   border: 1px solid #ccc;
   background-color: #fff; /* White background for canvas */
+  width: 100%; /* Make canvas fill container width */
+  max-width: 900px; /* Set max width */
+  box-sizing: border-box; /* Include border in width calculation */
 }
 
 /* Styling for control sections */
@@ -139,51 +142,16 @@ hr {
   color: #666;
 }
 
-/* Remove duplicated rule */
-
 /* Style for the selected command (from original CSS) */
 div.selectedCommand
 {
   background-color:#ffee67;
 }
 
-/* Flexbox layout for columns */
-#controls-container {
-  display: flex;
-  gap: 20px; /* Space between columns */
-  align-items: stretch; /* Make columns equal height */
-}
+/* Removed column layout styles */
 
-#left-column, #middle-column, #right-column {
-  /* Make columns flex containers themselves */
-  display: flex;
-  flex-direction: column;
-  box-sizing: border-box;
-  padding: 0; 
-}
-
-#left-column {
-  flex: 1; 
-  min-width: 250px; 
-}
-
-#middle-column {
-  flex: 2; 
-  min-width: 300px;
-}
-
-#right-column {
-  flex: 1; 
-  min-width: 250px;
-}
-
-/* Removed duplicated/conflicting .control-section rules from here */
-
-
-/* Adjust textarea width within the right column */
-#right-column textarea.code {
-  width: 100%; /* Make it fill the column width */
+/* Ensure textarea takes full width */
+textarea.code {
+  width: 100%; /* Make it fill the container width */
   box-sizing: border-box; /* Include padding and border in the element's total width and height */
 }
-
-/* Removed duplicated/conflicting .control-section rules from here */

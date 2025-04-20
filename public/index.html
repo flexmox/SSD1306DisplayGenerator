@@ -15,12 +15,10 @@ displays (128x64 or 128x32) on Particle devices. You can find out more about thi
 <a href="https://github.com/rickkas7/DisplayGenerator">open source repository</a>.</p>
 
 <form v-on:submit.prevent>
-  <canvas id="mainCanvas" width="640" height="200" v-on:click="canvasClick"></canvas>
 
-  <div id="controls-container">
-    <div id="left-column">
-      <div class="control-section" id="display-settings">
-        <h3>Display Settings</h3>
+  <!-- 1. Display Settings -->
+  <div class="control-section" id="display-settings">
+    <h3>Display Settings</h3>
     <p>
       <label for="displayTypeSelect">Display Type:</label>
       <select id="displayTypeSelect" v-model="displayType">
@@ -35,8 +33,60 @@ displays (128x64 or 128x32) on Particle devices. You can find out more about thi
     </p>
   </div>
 
-  <!-- Duplicated sections removed from here -->
+  <!-- 2. Screen Emulator -->
+  <canvas id="mainCanvas" height="200" v-on:click="canvasClick"></canvas>
 
+  <!-- 3. Commands (List and Actions) -->
+  <div id="commands-section">
+      <div class="control-section" id="command-list-section">
+        <h3>Commands</h3>
+        <div id="command-list-container">
+          <cmd-list
+              v-for="command in commands"
+              v-bind:key="command.id"
+              v-bind:command="command"
+              v-bind:fonts="fonts"
+              v-bind:selected-command-id="selectedCommandId"
+            ></cmd-list>
+        </div>
+      </div>
+      <div class="control-section" id="command-actions">
+        <h3>Command Actions</h3>
+        <div class="button-group">
+          <button v-on:click="moveUpCommand" :disabled="selectedCommandId < 0">Move Up</button>
+          <button v-on:click="moveDownCommand" :disabled="selectedCommandId < 0">Move Down</button>
+          <button v-on:click="copyCommand" :disabled="selectedCommandId < 0">Duplicate</button>
+          <button v-on:click="deleteCommand" :disabled="selectedCommandId < 0">Delete</button>
+          <button v-on:click="deleteAllCommand" :disabled="commands.length == 0">Delete All</button>
+        </div>
+        <p>
+          <label for="commandToAddSelect">Add a command:</label>
+          <select id="commandToAddSelect" v-model="commandToAdd">
+            <option v-for="name in commandNames" v-bind:value="name">
+                {{ name }}
+            </option>
+          </select>
+          <button v-on:click="addCommand">Add</button>
+        </p>
+      </div>
+  </div> <!-- end commands-section -->
+
+
+  <!-- 4. Code Output -->
+  <div class="control-section" id="codeOutput">
+    <h3 @click="toggleCodeOutput" style="cursor: pointer;">Code Output [{{ codeOutputVisible ? '-' : '+' }}]</h3>
+    <div v-show="codeOutputVisible">
+      <textArea rows="10" cols="100" v-model="codeText" id="codeTextArea" class="code" spellcheck="false">
+      </textArea>
+      <p>
+        <button v-on:click="copyCodeCommand">Copy Code</button>
+        <button v-on:click="saveCodeCommand">Save Code</button>
+      </p>
+    </div> <!-- end v-show wrapper -->
+  </div> <!-- codeOutput -->
+
+
+  <!-- 5. Layout Management -->
   <div class="control-section" id="layout-management">
     <h3>Layout Management</h3>
     <p>
@@ -63,57 +113,7 @@ displays (128x64 or 128x32) on Particle devices. You can find out more about thi
       <button v-on:click="deleteLayout" :disabled="!selectedLayoutToLoad">Delete Selected</button>
     </p>
   </div>
-    </div> <!-- end left-column -->
 
-    <div id="middle-column">
-      <div class="control-section" id="command-list-section">
-        <h3>Commands</h3>
-        <div id="command-list-container">
-          <cmd-list
-              v-for="command in commands"
-              v-bind:key="command.id"
-              v-bind:command="command"
-              v-bind:fonts="fonts"
-              v-bind:selected-command-id="selectedCommandId"
-            ></cmd-list>
-        </div>
-      </div>
-    </div> <!-- end middle-column -->
-
-    <div id="right-column">
-      <div class="control-section" id="command-actions">
-        <h3>Command Actions</h3>
-        <div class="button-group">
-          <button v-on:click="moveUpCommand" :disabled="selectedCommandId < 0">Move Up</button>
-          <button v-on:click="moveDownCommand" :disabled="selectedCommandId < 0">Move Down</button>
-          <button v-on:click="copyCommand" :disabled="selectedCommandId < 0">Duplicate</button>
-          <button v-on:click="deleteCommand" :disabled="selectedCommandId < 0">Delete</button>
-          <button v-on:click="deleteAllCommand" :disabled="commands.length == 0">Delete All</button>
-        </div>
-        <p>
-          <label for="commandToAddSelect">Add a command:</label>
-          <select id="commandToAddSelect" v-model="commandToAdd">
-            <option v-for="name in commandNames" v-bind:value="name">
-                {{ name }}
-            </option>
-          </select>
-          <button v-on:click="addCommand">Add</button>
-        </p>
-      </div>
-
-      <div class="control-section" id="codeOutput">
-        <h3 @click="toggleCodeOutput" style="cursor: pointer;">Code Output [{{ codeOutputVisible ? '-' : '+' }}]</h3>
-        <div v-show="codeOutputVisible">
-          <textArea rows="10" cols="100" v-model="codeText" id="codeTextArea" class="code" spellcheck="false">
-          </textArea>
-  <p>
-    <button v-on:click="copyCodeCommand">Copy Code</button>
-    <button v-on:click="saveCodeCommand">Save Code</button>
-  </p>
-        </div> <!-- end v-show wrapper -->
-      </div> <!-- codeOutput -->
-    </div> <!-- end right-column -->
-  </div> <!-- end controls-container -->
 
 </form>
 
