@@ -1,11 +1,12 @@
 <html>
 <head>
 <title>Display Generator</title>
+<script src="https://cdn.jsdelivr.net/npm/vue/dist/vue.js"></script>
+<script src="canvasRenderer.js"></script>
 <script type="text/javascript" src="editor.js"></script>
 <link rel="stylesheet" href="editor.css">
 </head>
 <body>
-
 
 <div id="mainApp">
 
@@ -16,74 +17,107 @@ displays (128x64 or 128x32) on Particle devices. You can find out more about thi
 <form v-on:submit.prevent>
   <canvas id="mainCanvas" width="640" height="200" v-on:click="canvasClick"></canvas>
 
+  <div id="controls-container">
+    <div id="left-column">
+      <div class="control-section" id="display-settings">
+        <h3>Display Settings</h3>
+    <p>
+      <label for="displayTypeSelect">Display Type:</label>
+      <select id="displayTypeSelect" v-model="displayType">
+        <option value="normal">128 x 64 (normal)</option>
+        <option value="short">128 x 32 (short)</option>
+        <option value="yellow">128 x 64 (yellow and blue)</option>
+      </select>
+
+      <input type="checkbox" v-model="invertDisplay" id="invertCheckbox"/><label for="invertCheckbox">Invert Display</label>
+
+      <span class="coordinates">{{coordinates}}</span>
+    </p>
+  </div>
+
+  <!-- Duplicated sections removed from here -->
+
+  <div class="control-section" id="layout-management">
+    <h3>Layout Management</h3>
+    <p>
+      <button v-on:click="downloadCommand">Save Layout to File</button>
+      &nbsp;
+      <label for="files">Load Layout from File:</label> <input type="file" id="files" name="files" accept="text/*, application/json, *.json" v-on:change="uploadCommand"/>
+      &nbsp;
+      <input type="checkbox" v-model="downloadAppend" id="downloadAppend"/><label for="downloadAppend">Append</label>
+    </p>
+    <hr/>
+    <p>
+      <label for="layoutNameInput">Layout Name:</label> <input type="text" id="layoutNameInput" v-model="layoutNameToSave" size="20" placeholder="Enter layout name"/>
+      <button v-on:click="saveLayout">Save Current Layout</button>
+    </p>
+    <p>
+      <label for="layoutSelect">Load/Delete Layout:</label>
+      <select id="layoutSelect" v-model="selectedLayoutToLoad">
+        <option :value="null" disabled>-- Select Layout --</option>
+        <option v-for="layout in savedLayouts" v-bind:value="layout.name">
+          {{ layout.name }}
+        </option>
+      </select>
+      <button v-on:click="loadLayout" :disabled="!selectedLayoutToLoad">Load Selected</button>
+      <button v-on:click="deleteLayout" :disabled="!selectedLayoutToLoad">Delete Selected</button>
+    </p>
+  </div>
+    </div> <!-- end left-column -->
+
+    <div id="middle-column">
+      <div class="control-section" id="command-list-section">
+        <h3>Commands</h3>
+        <div id="command-list-container">
+          <cmd-list
+              v-for="command in commands"
+              v-bind:key="command.id"
+              v-bind:command="command"
+              v-bind:fonts="fonts"
+              v-bind:selected-command-id="selectedCommandId"
+            ></cmd-list>
+        </div>
+      </div>
+    </div> <!-- end middle-column -->
+
+    <div id="right-column">
+      <div class="control-section" id="command-actions">
+        <h3>Command Actions</h3>
+        <div class="button-group">
+          <button v-on:click="moveUpCommand" :disabled="selectedCommandId < 0">Move Up</button>
+          <button v-on:click="moveDownCommand" :disabled="selectedCommandId < 0">Move Down</button>
+          <button v-on:click="copyCommand" :disabled="selectedCommandId < 0">Duplicate</button>
+          <button v-on:click="deleteCommand" :disabled="selectedCommandId < 0">Delete</button>
+          <button v-on:click="deleteAllCommand" :disabled="commands.length == 0">Delete All</button>
+        </div>
+        <p>
+          <label for="commandToAddSelect">Add a command:</label>
+          <select id="commandToAddSelect" v-model="commandToAdd">
+            <option v-for="name in commandNames" v-bind:value="name">
+                {{ name }}
+            </option>
+          </select>
+          <button v-on:click="addCommand">Add</button>
+        </p>
+      </div>
+
+      <div class="control-section" id="codeOutput">
+        <h3 @click="toggleCodeOutput" style="cursor: pointer;">Code Output [{{ codeOutputVisible ? '-' : '+' }}]</h3>
+        <div v-show="codeOutputVisible">
+          <textArea rows="10" cols="100" v-model="codeText" id="codeTextArea" class="code" spellcheck="false">
+          </textArea>
   <p>
-  	Display Type: <select v-model="displayType">
-  		<option value="normal">128 x 64 (normal)</option>
-  		<option value="short">128 x 32 (short)</option>
-  		<option value="yellow">128 x 64 (yellow and blue)</option>
-  	</select> 
-  	
-  	<input type="checkbox" v-model="invertDisplay" id="invertCheckbox"/><label for="invertCheckbox">Invert Display</label>	
-  	
-  	
-  	&nbsp;&nbsp;&nbsp; 
-  	
-  	{{coordinates}}
+    <button v-on:click="copyCodeCommand">Copy Code</button>
+    <button v-on:click="saveCodeCommand">Save Code</button>
   </p>
+        </div> <!-- end v-show wrapper -->
+      </div> <!-- codeOutput -->
+    </div> <!-- end right-column -->
+  </div> <!-- end controls-container -->
 
-  <cmd-list
-      v-for="command in commands"
-      v-bind:key="command.id"
-      v-bind:command="command"
-      v-bind:fonts="fonts"
-      v-bind:selected-command-id="selectedCommandId"
-    ></cmd-list>
-    
-    
-    <div>
-		<p>
-			<button v-on:click="moveUpCommand" :disabled="selectedCommandId < 0">Move Up</button>
-			<button v-on:click="moveDownCommand" :disabled="selectedCommandId < 0">Move Down</button>
-			&nbsp;	
-			<button v-on:click="copyCommand" :disabled="selectedCommandId < 0">Duplicate</button>
-			<button v-on:click="deleteCommand" :disabled="selectedCommandId < 0">Delete</button>
-			&nbsp;	
-			&nbsp;	
-			<button v-on:click="deleteAllCommand" :disabled="commands.length == 0">Delete All</button>						
-		</p>
-   		<p>Add a command: 
-   			<select v-model="commandToAdd">
-			<option v-for="name in commandNames" v-bind:value="name">
-			    {{ name }}
-  			</option>
-			</select>
-			<button v-on:click="addCommand">Add</button>
-		</p>
-		<p>
-			<button v-on:click="downloadCommand">Save Layout</button>
-			&nbsp;
-			Load Layout: <input type="file" id="files" name="files" accept="text/*, application/json, *.json" v-on:change="uploadCommand"/>
-			&nbsp;
-			<input type="checkbox" v-model="downloadAppend" id="downloadAppend"/><label for="downloadAppend">Append</label>	
-		</p>
-    </div>
 </form>
-  
-<div id="codeOutput">
-<p>Code:</p>
-<textArea rows="10" cols="100" v-model="codeText" id="codeTextArea" class="code" spellcheck="false">
-</textArea>
 
-<p>
-	<button v-on:click="copyCodeCommand">Copy Code</button>
-	<button v-on:click="saveCodeCommand">Save Code</button>
-</p>
-
-
-</div> <!-- codeOutput -->
-  
 </div> <!-- mainApp -->
-
 
 
 <div id="iconApp" style="display:none">
@@ -91,11 +125,11 @@ displays (128x64 or 128x32) on Particle devices. You can find out more about thi
 <form v-on:submit.prevent>
 	<div>
 		<p>
-		<input type="checkbox" v-model="square" id="squareCheckbox"/><label for="squareCheckbox">Square</label>	
-		
+		<input type="checkbox" v-model="square" id="squareCheckbox"/><label for="squareCheckbox">Square</label>
+
 		<span v-if="square">Size = <input v-model="size" size="4"></span>
 		<span v-else>Width = <input v-model="width" size="4"> Height = <input v-model="height" size="4"></span>
-		  
+
 		&nbsp;Weight = <input v-model="weight" size="4">
 		<input type="checkbox" v-model="showCode" id="showCodeCheckbox" /><label for="showCodeCheckbpx">Show code</label></p>
 	</div>
@@ -105,7 +139,7 @@ displays (128x64 or 128x32) on Particle devices. You can find out more about thi
 		<p><img id="iconImg" style="display:none" /></p>
 	</div>
 	<div>
-		<p>Upload and convert image file: 
+		<p>Upload and convert image file:
 		<input type="file" id="files" name="files" accept="image/*, *.gif, *.jpg, *.jpeg, *.png, *.svg" v-on:change="uploadIconCommand"/></p>
 	</div>
 	<div>
@@ -117,9 +151,9 @@ displays (128x64 or 128x32) on Particle devices. You can find out more about thi
 			<option value="p48x48">Particle logo only 48x48</option>
 			<option value="a82x64">Adafruit 82x64</option>
 			<option value="a115x32">Adafruit 115x32</option>
-			
+
 			</select>
-		 
+
 		</p>
 	</div>
 	<div>
@@ -136,13 +170,8 @@ displays (128x64 or 128x32) on Particle devices. You can find out more about thi
     ></icon-row>
 </table>
 
-
-
 </div> <!-- iconApp -->
 
-
-
-<script src="https://cdn.jsdelivr.net/npm/vue/dist/vue.js"></script>
-<script async type="text/javascript" src="main.js"></script>
+<script type="text/javascript" src="main.js"></script>
 </body>
 </html>

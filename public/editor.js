@@ -2,17 +2,9 @@
 // Repository: https://github.com/rickkas7/DisplayGenerator
 // License: MIT
 
-var screenx = 128;
-var screeny = 64;
-var zoom = 3;
-var margin = 4;
-var showMini = true;
-var miniMargin = 2;
-var miniSeparator = 10;
-var yellowTopSize = 16;
-var displayWhite = '#e2fdff';
-var displayYellow = '#fdf020';
-var displayBlue = '#4bd3ff';
+// Global variables (some might be better scoped later)
+var screenx = 128; // Still needed for some calculations? Check usage. Let's keep for now.
+var screeny = 64; // This will be updated by the Vue watcher
 
 var gfx;
 var mainApp;
@@ -31,6 +23,43 @@ var Module = {
 			initializeVue();	
 		}
 };
+
+const LOCAL_STORAGE_KEY = 'ssd1306Layouts';
+
+// --- Persistence Functions ---
+function persistLayouts() {
+	try {
+		localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(mainApp.savedLayouts));
+	} catch (e) {
+		console.error("Error saving layouts to localStorage:", e);
+		alert("Could not save layouts. LocalStorage might be full or disabled.");
+	}
+}
+
+function loadPersistedLayouts() {
+	const storedLayouts = localStorage.getItem(LOCAL_STORAGE_KEY);
+	if (storedLayouts) {
+		try {
+			const parsedLayouts = JSON.parse(storedLayouts);
+			// Basic validation - check if it's an array
+			if (Array.isArray(parsedLayouts)) {
+				mainApp.savedLayouts = parsedLayouts;
+				// Ensure nextId is correctly set after loading persisted layouts
+				mainApp.nextId = mainApp.commands.length > 0 ? Math.max(...mainApp.commands.map(cmd => cmd.id)) + 1 : 1; 
+				// Also consider IDs within saved layouts when calculating nextId? 
+				// For now, let's assume loading doesn't immediately affect nextId, 
+				// it's recalculated on loadLayout. A more robust ID system might be needed later.
+			} else {
+				console.error("Invalid data found in localStorage for layouts.");
+				localStorage.removeItem(LOCAL_STORAGE_KEY); // Clear invalid data
+			}
+		} catch (e) {
+			console.error("Error parsing layouts from localStorage:", e);
+			localStorage.removeItem(LOCAL_STORAGE_KEY); // Clear invalid data
+		}
+	}
+}
+
 
 function initializeVue() {
 
@@ -210,9 +239,77 @@ function initializeVue() {
 			coordinates:'',
 			downloadAppend:false,
 			displayType:'normal',
-			invertDisplay:false
+			invertDisplay:false,
+			savedLayouts: [], // Array to store { name: 'Layout Name', commands: [...] }
+			layoutNameToSave: '', // Input model for saving
+			selectedLayoutToLoad: null, // Model for the dropdown
+			codeOutputVisible: false // Changed default to false
 		},
 		methods: {
+			toggleCodeOutput: function() { // Added method
+				this.codeOutputVisible = !this.codeOutputVisible;
+			},
+			saveLayout: function() {
+				if (!this.layoutNameToSave) {
+					alert("Please enter a name for the layout.");
+					return;
+				}
+				// Check if name already exists, overwrite for simplicity for now
+				const existingIndex = this.savedLayouts.findIndex(layout => layout.name === this.layoutNameToSave);
+				const layoutData = {
+					name: this.layoutNameToSave,
+					// Deep copy commands - ensure IDs are preserved correctly
+					commands: JSON.parse(JSON.stringify(this.commands)) 
+				};
+				
+				if (existingIndex > -1) {
+					// Overwrite existing layout
+					this.savedLayouts.splice(existingIndex, 1, layoutData);
+					alert(`Layout '${this.layoutNameToSave}' updated.`);
+				} else {
+					// Add new layout
+					this.savedLayouts.push(layoutData);
+					alert(`Layout '${this.layoutNameToSave}' saved.`);
+				}
+				this.layoutNameToSave = ''; // Clear input
+				this.selectedLayoutToLoad = layoutData.name; // Select the saved/updated layout in the dropdown
+				persistLayouts(); // Persist after saving
+			},
+			loadLayout: function() {
+				if (!this.selectedLayoutToLoad) {
+					alert("Please select a layout to load.");
+					return;
+				}
+				// Find the layout object by name
+				const layoutToLoad = this.savedLayouts.find(layout => layout.name === this.selectedLayoutToLoad);
+				if (layoutToLoad) {
+					// Deep copy commands to avoid modifying the saved layout directly
+					this.commands = JSON.parse(JSON.stringify(layoutToLoad.commands)); 
+					// Recalculate nextId based on loaded commands to avoid ID conflicts
+					this.nextId = this.commands.length > 0 ? Math.max(...this.commands.map(cmd => cmd.id)) + 1 : 1;
+					processCommands(); // Re-render and update code
+					alert(`Layout '${this.selectedLayoutToLoad}' loaded.`);
+					this.selectedCommandId = -1; // Deselect any command
+				} else {
+					alert(`Error: Layout '${this.selectedLayoutToLoad}' not found.`);
+				}
+			},
+			deleteLayout: function() {
+				if (!this.selectedLayoutToLoad) {
+					alert("Please select a layout to delete.");
+					return;
+				}
+				const layoutIndex = this.savedLayouts.findIndex(layout => layout.name === this.selectedLayoutToLoad);
+				if (layoutIndex > -1) {
+					const deletedName = this.selectedLayoutToLoad;
+					this.savedLayouts.splice(layoutIndex, 1);
+					alert(`Layout '${deletedName}' deleted.`);
+					this.selectedLayoutToLoad = null; // Clear selection
+					persistLayouts(); // Persist after deleting
+				} else {
+					alert(`Error: Layout '${this.selectedLayoutToLoad}' not found.`);
+				}
+			},
 			addCommand: function() {
 				var obj = {op:this.commandToAdd,id:this.nextId++};
 				var defs = this.commandDefaults[this.commandToAdd];
@@ -412,14 +509,10 @@ function initializeVue() {
 					}
 					else {
 						document.getElementById('iconApp').style.display = 'none';					
-					}
-					if (iconApp.showCode || !selectedCmd || selectedCmd.op !== 'drawIcon') {						
-						document.getElementById('codeOutput').style.display = 'block';					
-					}
-					else {
-						document.getElementById('codeOutput').style.display = 'none';											
-					}
-				}
+					} // Added missing closing brace
+					// Removed conflicting logic that hides/shows codeOutput based on icon selection
+					// Now controlled explicitly by codeOutputVisible and toggleCodeOutput
+				}, // Added missing comma
 			},
 			displayType: {
 				handler(val) {
@@ -432,7 +525,8 @@ function initializeVue() {
 						screeny = 64;
 					}
 					
-					document.getElementById('mainCanvas').height = mainCanvasHeight();
+					// Height is now set within canvasRenderer.renderPreview
+					// document.getElementById('mainCanvas').height = mainCanvasHeight(); 
 					
 					processCommands();
 				}
@@ -971,6 +1065,9 @@ function initializeVue() {
 
 
 	processCommands();
+
+	// Load any persisted layouts when Vue is ready
+	loadPersistedLayouts();
 }
 
 function findCommandById(id) {
@@ -1151,90 +1248,25 @@ function processCommands() {
 
 	mainApp.codeText = codeIncl + codeDecl + '\n' + codeImpl;
 
-	render();
+	// Gather config for the renderer
+	const renderConfig = {
+		screenx: screenx, // Keep screenx global for now
+		// screeny is passed directly
+		zoom: 3, // TODO: Make these configurable later
+		margin: 4,
+		showMini: true,
+		miniMargin: 2,
+		miniSeparator: 10,
+		yellowTopSize: 16,
+		displayWhite: '#e2fdff',
+		displayYellow: '#fdf020',
+		displayBlue: '#4bd3ff'
+	};
+
+	// Call the external renderer, passing config
+	window.canvasRenderer.renderPreview(gfx, mainApp.displayType, mainApp.invertDisplay, screeny, renderConfig);
 }
 
-function mainCanvasX(x) {
-	return margin + x * zoom;
-}
-function mainCanvasY(y) {
-	return margin + y * zoom + ((mainApp.displayType === 'yellow' && y >= yellowTopSize) ? zoom : 0);
-}
-function mainCanvasWidth() {
-	return (2 * margin) + (screenx * zoom);
-}
-function mainCanvasHeight() {
-	return (2 * margin) + (screeny * zoom) + ((mainApp.displayType === 'yellow') ? zoom : 0);
-}
-function miniCanvasLeft() {
-	return (screenx * zoom) + (2 * margin) + miniSeparator;	
-}
-function miniCanvasX(x) {
-	return miniCanvasLeft() + miniMargin + x;
-}
-function miniCanvasY(y) {
-	return miniMargin + y + ((mainApp.displayType === 'yellow' && y >= yellowTopSize) ? 1 : 0);
-}
-function miniCanvasWidth() {
-	return (2 * miniMargin) + screenx;
-}
-function miniCanvasHeight() {
-	return (2 * miniMargin) + screeny + ((mainApp.displayType === 'yellow') ? 1 : 0);
-}
-
-function render() {
-	// Bytes are left to right, top to bottom, one bit per byte
-	// Within the byte 0x80 is the leftmost pixel, 0x40 is the next, ... 0x01 is the rightmost pixel in the byte
-	var bytes = gfx.getBytes();
-
-	var canvas = document.getElementById("mainCanvas");
-	var ctx = canvas.getContext("2d");
-
-	var yellow = (mainApp.displayType === 'yellow');
-	
-	ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-	ctx.fillStyle = "#000000";
-	ctx.fillRect(0, 0, mainCanvasWidth(), mainCanvasHeight());
-	if (showMini) {
-		ctx.fillRect(miniCanvasLeft(), 0, miniCanvasWidth(), miniCanvasHeight());
-	}
-
-	ctx.fillStyle = displayWhite;
-
-
-	var byteIndex = 0;
-	for(var yy = 0; yy < screeny; yy++) {
-		if (yellow) {
-			if (yy < yellowTopSize) {
-				ctx.fillStyle = displayYellow;				
-			}
-			else {
-				ctx.fillStyle = displayBlue;
-			}
-		}
-		for(var xx = 0; xx < screenx; xx += 8) {
-			var pixel8 = bytes[byteIndex++];
-
-			for(var ii = 0; ii < 8; ii++) {
-				var pixel = ((pixel8 & (1 << (7 - ii))) != 0) ? 1 : 0;
-				
-				if (mainApp.invertDisplay) {
-					pixel = !pixel;
-				}
-				
-				if (pixel) {
-					ctx.fillRect(mainCanvasX(xx + ii), mainCanvasY(yy), zoom, zoom);
-
-					if (showMini) {
-						ctx.fillRect(miniCanvasX(xx + ii), miniCanvasY(yy), 1, 1);
-					}
-					//console.log("set pixel xx=" + (xx + ii) + " yy=" + yy);
-				}
-			}
-		}
-	}
-}
 
 function quotedC(str) {
 
@@ -1255,6 +1287,3 @@ const adafruit82x64 = '00000000000180000000000000000000038000000000000000000007C
 
 
 const adafruit115x32 = '0000600000000000000000000000000000E00000000000000000000000000001E00000000000000000000000000001F00000000000000000000000000003F00000000000000000000000000007F00000000000000000000000000007F8000000000000000000000000000FF800000003C0007E000001E0007F0FF800000003C000FE000001E000FFEFF800000003C000FE000001E000FFFFF800000003C000F00000000F007FFE7FC0000003C000F00000000F003FFE7FF83FF1FBCFFCFEF3BC3DEFE01FFE7FFF7FFBFFDFFEFEFFBC3DEFE01FC6FFFF7FFBFFDFFEFEFFBC3DEFE00FE3C7FE787BC3DE1EF0FFBC3DEF0007FF87FC787BC3DE1EF0F83C3DEF0001FFFFF0007BC3C01EF0F03C3DEF0001F37FE03FFBC3CFFEF0F03C3DEF0003E33F807FFBC3DFFEF0F03C3DEF0007E73C00787BC3DE1EF0F03C3DEF0007FFBE00787BC3DE1EF0F03C3DEF0007FFFE00787BC3DE1EF0F03C3DEF000FFFFE007FFBFFDFFEF0F03FFDEFE00FFFFF007FFBFFDFFEF0F03FFDEFE00FF9FF003E79F9CF9EF0F01F3DE7E01FF1FF0000000000000000000000001F80FF007FFFFFFFFFFFFFFFFFFFE01C007F007FFFFFFFFEB46D888D18E000001F007FFFFFFFFE95AD7DB577E000000F007FFFFFFFFEA5AD9D8D19E0000006007FFFFFFFFEB5ADEDB57EE0';
-
-
-

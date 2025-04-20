@@ -1,7 +1,7 @@
 body
 {
-background-color:#ffffff;
-max-width:800;
+  background-color:#ffffff;
+  /* Removed max-width, let mainApp handle width/centering */
 }
 
 p,h1,h2,h3,li,td,div
@@ -18,5 +18,172 @@ background-color:#ffee67;
 
 textarea.code
 {
-font-family: monospace;
+  font-family: monospace;
+  width: 95%; /* Make textarea wider */
+  border: 1px solid #ccc;
+  padding: 5px;
 }
+
+#mainApp {
+  max-width: 800px; /* Keep max-width */
+  margin: 0 auto; /* Center the app */
+  padding: 20px;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  background-color: #f9f9f9;
+}
+
+#mainCanvas {
+  display: block; /* Center canvas */
+  margin: 0 auto 20px auto; /* Add bottom margin */
+  border: 1px solid #ccc;
+  background-color: #fff; /* White background for canvas */
+}
+
+/* Styling for control sections */
+.control-section {
+  background-color: #fff; /* White background for sections */
+  border: 1px solid #eee; /* Border for sections */
+  padding: 15px; /* Padding for sections */
+  margin-bottom: 20px; /* Bottom margin */
+  border-radius: 5px; /* Rounded corners for sections */
+  width: 100%; /* Ensure it takes full width within column */
+  box-sizing: border-box;
+  flex-grow: 1; /* Make ALL control sections attempt to grow vertically */
+}
+
+/* Removed specific grow rules from individual sections */
+/* #layout-management, 
+#command-list-section, 
+#codeOutput {
+  flex-grow: 1;           
+} */
+
+/* Ensure command list container grows within its section */
+#command-list-container {
+  flex-grow: 1; /* Allow container to fill space in command-list-section */
+  /* Removed max-height to allow column stretching */
+  overflow-y: auto; /* Keep scroll if content exceeds available space */
+  border: 1px solid #eee;
+  padding: 10px;
+  margin-bottom: 15px; /* Space below command list */
+}
+
+/* Ensure textarea grows within its section */
+#codeOutput textarea.code {
+  flex-grow: 1; /* Allow textarea to fill space in codeOutput */
+  min-height: 150px; /* Optional: ensure a minimum size */
+}
+
+.control-section h3 {
+  margin-top: 0;
+  margin-bottom: 15px;
+  border-bottom: 1px solid #eee;
+  padding-bottom: 10px;
+  color: #333;
+}
+
+label {
+  margin-right: 5px;
+  font-weight: bold;
+}
+
+input[type="text"],
+input[type="number"],
+select {
+  padding: 5px 8px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  margin-right: 10px;
+}
+
+input[type="checkbox"] {
+  margin-right: 3px;
+  vertical-align: middle; /* Align checkboxes better */
+}
+
+button {
+  padding: 8px 15px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  background-color: #e7e7e7;
+  color: #333;
+  cursor: pointer;
+  margin: 2px 5px 2px 0; /* Add slight margin */
+  transition: background-color 0.2s ease;
+}
+
+button:hover:not(:disabled) {
+  background-color: #ddd;
+}
+
+button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.button-group button {
+  margin-right: 5px; /* Space out buttons in groups */
+}
+
+hr {
+  border: 0;
+  height: 1px;
+  background-color: #eee;
+  margin: 20px 0;
+}
+
+.coordinates {
+  margin-left: 20px;
+  font-style: italic;
+  color: #666;
+}
+
+/* Remove duplicated rule */
+
+/* Style for the selected command (from original CSS) */
+div.selectedCommand
+{
+  background-color:#ffee67;
+}
+
+/* Flexbox layout for columns */
+#controls-container {
+  display: flex;
+  gap: 20px; /* Space between columns */
+  align-items: stretch; /* Make columns equal height */
+}
+
+#left-column, #middle-column, #right-column {
+  /* Make columns flex containers themselves */
+  display: flex;
+  flex-direction: column;
+  box-sizing: border-box;
+  padding: 0; 
+}
+
+#left-column {
+  flex: 1; 
+  min-width: 250px; 
+}
+
+#middle-column {
+  flex: 2; 
+  min-width: 300px;
+}
+
+#right-column {
+  flex: 1; 
+  min-width: 250px;
+}
+
+/* Removed duplicated/conflicting .control-section rules from here */
+
+
+/* Adjust textarea width within the right column */
+#right-column textarea.code {
+  width: 100%; /* Make it fill the column width */
+  box-sizing: border-box; /* Include padding and border in the element's total width and height */
+}
+
+/* Removed duplicated/conflicting .control-section rules from here */
